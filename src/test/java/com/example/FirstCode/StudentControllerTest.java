@@ -3,6 +3,7 @@ package com.example.FirstCode;
 import com.example.FirstCode.controller.HealthController;
 import com.example.FirstCode.controller.StudentController;
 import com.example.FirstCode.dto.StudentRequestDto;
+import com.example.FirstCode.dto.StudentResponseDto;
 import com.example.FirstCode.exception.GlobalExceptionHandler;
 import com.example.FirstCode.service.StudentService;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -98,10 +99,59 @@ class StudentControllerTest {
                         .content(objectMapper.writeValueAsString(invalidRequest)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.status", is(400)))
+                .andExpect(jsonPath("$.error", is("Bad Request")))
                 .andExpect(jsonPath("$.errors", notNullValue()))
                 .andExpect(jsonPath("$.errors.name", notNullValue()))
                 .andExpect(jsonPath("$.errors.age", notNullValue()))
-                .andExpect(jsonPath("$.errors.email", notNullValue()));
+                .andExpect(jsonPath("$.errors.email", notNullValue()))
+                .andExpect(jsonPath("$.errors.department", notNullValue()));
+    }
+
+    @Test
+    @DisplayName("PUT /api/v1/students/{id} with valid payload should update and return 200 with DTO")
+    void testUpdateStudentSuccess() throws Exception {
+        // Create student first
+        StudentRequestDto initial = StudentRequestDto.builder()
+                .name("Carlos Ray")
+                .age(21)
+                .email("carlos@example.com")
+                .department("Physics")
+                .build();
+        StudentResponseDto created = studentService.addStudent(initial);
+
+        StudentRequestDto updateRequest = StudentRequestDto.builder()
+                .name("Carlos Ray Jr.")
+                .age(22)
+                .email("carlos.jr@example.com")
+                .department("Applied Physics")
+                .build();
+
+        mockMvc.perform(put("/api/v1/students/" + created.getId())
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updateRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id", is(created.getId())))
+                .andExpect(jsonPath("$.name", is("Carlos Ray Jr.")))
+                .andExpect(jsonPath("$.age", is(22)))
+                .andExpect(jsonPath("$.department", is("Applied Physics")));
+    }
+
+    @Test
+    @DisplayName("DELETE /api/v1/students/{id} should delete student and return 200 with success JSON")
+    void testDeleteStudentSuccess() throws Exception {
+        StudentRequestDto initial = StudentRequestDto.builder()
+                .name("Delete Candidate")
+                .age(25)
+                .email("delete.me@example.com")
+                .department("Chemistry")
+                .build();
+        StudentResponseDto created = studentService.addStudent(initial);
+
+        mockMvc.perform(delete("/api/v1/students/" + created.getId())
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success", is(true)))
+                .andExpect(jsonPath("$.data", is(created.getId())));
     }
 
     @Test
@@ -111,6 +161,7 @@ class StudentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status", is(404)))
+                .andExpect(jsonPath("$.error", is("Not Found")))
                 .andExpect(jsonPath("$.message", containsString("not found")));
     }
 
