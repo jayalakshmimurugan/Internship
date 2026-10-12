@@ -7,12 +7,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
  * Service Information and Health Check Controller.
- * Provides service metadata and documentation of endpoints as JSON.
+ * Provides service metadata and documentation of JPA-backed endpoints as JSON.
  */
 @RestController
 @RequestMapping({"/api/v1/health", "/api/v1/status", "/health"})
@@ -22,16 +21,20 @@ public class HealthController {
     public ResponseEntity<Map<String, Object>> getHealth() {
         Map<String, Object> health = new HashMap<>();
         health.put("status", "UP");
-        health.put("service", "Student Management REST Service");
-        health.put("version", "1.0.0");
+        health.put("service", "Student & Department JPA Management REST Service");
+        health.put("version", "2.0.0");
+        health.put("database", "Relational Database with Spring Data JPA & Hibernate");
+        health.put("relationships", "Department @OneToMany Student (Bidirectional)");
         health.put("timestamp", LocalDateTime.now().toString());
 
         Map<String, String> endpoints = new HashMap<>();
         endpoints.put("GET /api/v1/students", "Retrieve all students (returns List<StudentResponseDto>)");
         endpoints.put("GET /api/v1/students/{id}", "Retrieve single student by ID (returns StudentResponseDto)");
-        endpoints.put("POST /api/v1/students", "Create new student (accepts StudentRequestDto, returns StudentResponseDto)");
+        endpoints.put("POST /api/v1/students", "Create new student linked to Department (accepts StudentRequestDto, returns StudentResponseDto)");
         endpoints.put("PUT /api/v1/students/{id}", "Update student by ID (accepts StudentRequestDto, returns StudentResponseDto)");
         endpoints.put("DELETE /api/v1/students/{id}", "Delete student by ID");
+        endpoints.put("GET /api/v1/departments", "Retrieve all departments with student counts (returns List<DepartmentResponseDto>)");
+        endpoints.put("POST /api/v1/departments", "Create new department (accepts DepartmentRequestDto, returns DepartmentResponseDto)");
         endpoints.put("GET /api/v1/health", "Service health check and endpoint directory");
 
         health.put("documentedEndpoints", endpoints);

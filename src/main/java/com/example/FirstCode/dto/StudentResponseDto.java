@@ -19,11 +19,12 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 public class StudentResponseDto {
 
-    private String id;
+    private Long id;
     private String name;
     private int age;
     private String email;
     private String department;
+    private String departmentCode;
     private String status;
 
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd'T'HH:mm:ss")

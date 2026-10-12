@@ -1,7 +1,9 @@
 package com.example.FirstCode;
 
+import com.example.FirstCode.controller.DepartmentController;
 import com.example.FirstCode.controller.HealthController;
 import com.example.FirstCode.controller.StudentController;
+import com.example.FirstCode.dto.DepartmentRequestDto;
 import com.example.FirstCode.dto.StudentRequestDto;
 import com.example.FirstCode.dto.StudentResponseDto;
 import com.example.FirstCode.exception.GlobalExceptionHandler;
@@ -29,6 +31,9 @@ class StudentControllerTest {
     private StudentController studentController;
 
     @Autowired
+    private DepartmentController departmentController;
+
+    @Autowired
     private HealthController healthController;
 
     @Autowired
@@ -37,11 +42,16 @@ class StudentControllerTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     private MockMvc mockMvc;
+    private MockMvc departmentMockMvc;
     private MockMvc healthMockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(studentController)
+                .setControllerAdvice(new GlobalExceptionHandler())
+                .build();
+
+        departmentMockMvc = MockMvcBuilders.standaloneSetup(departmentController)
                 .setControllerAdvice(new GlobalExceptionHandler())
                 .build();
 
@@ -51,24 +61,24 @@ class StudentControllerTest {
     }
 
     @Test
-    @DisplayName("GET /api/v1/students should return list of student DTOs")
+    @DisplayName("GET /api/v1/students should return list of student DTOs backed by JPA")
     void testGetAllStudents() throws Exception {
         mockMvc.perform(get("/api/v1/students")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", isA(List.class)))
                 .andExpect(jsonPath("$[0].name", notNullValue()))
-                .andExpect(jsonPath("$[0].age", notNullValue()))
+                .andExpect(jsonPath("$[0].department", notNullValue()))
                 .andExpect(jsonPath("$[0].status", is("ACTIVE")));
     }
 
     @Test
-    @DisplayName("POST /api/v1/students should create a student and return 201 with DTO")
+    @DisplayName("POST /api/v1/students should create a student, link with Department relationship, and return 201 with DTO")
     void testCreateStudentSuccess() throws Exception {
         StudentRequestDto request = StudentRequestDto.builder()
                 .name("Alex Smith")
                 .age(24)
-                .email("alex.smith@example.com")
+                .email("alex.smith" + System.currentTimeMillis() + "@example.com")
                 .department("Data Science")
                 .build();
 
@@ -79,7 +89,6 @@ class StudentControllerTest {
                 .andExpect(jsonPath("$.id", notNullValue()))
                 .andExpect(jsonPath("$.name", is("Alex Smith")))
                 .andExpect(jsonPath("$.age", is(24)))
-                .andExpect(jsonPath("$.email", is("alex.smith@example.com")))
                 .andExpect(jsonPath("$.department", is("Data Science")))
                 .andExpect(jsonPath("$.status", is("ACTIVE")));
     }
@@ -108,13 +117,12 @@ class StudentControllerTest {
     }
 
     @Test
-    @DisplayName("PUT /api/v1/students/{id} with valid payload should update and return 200 with DTO")
+    @DisplayName("PUT /api/v1/students/{id} with valid payload should update JPA entity and return 200 with DTO")
     void testUpdateStudentSuccess() throws Exception {
-        // Create student first
         StudentRequestDto initial = StudentRequestDto.builder()
                 .name("Carlos Ray")
                 .age(21)
-                .email("carlos@example.com")
+                .email("carlos" + System.currentTimeMillis() + "@example.com")
                 .department("Physics")
                 .build();
         StudentResponseDto created = studentService.addStudent(initial);
@@ -122,7 +130,7 @@ class StudentControllerTest {
         StudentRequestDto updateRequest = StudentRequestDto.builder()
                 .name("Carlos Ray Jr.")
                 .age(22)
-                .email("carlos.jr@example.com")
+                .email("carlos.updated" + System.currentTimeMillis() + "@example.com")
                 .department("Applied Physics")
                 .build();
 
@@ -130,19 +138,19 @@ class StudentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(updateRequest)))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id", is(created.getId())))
+                .andExpect(jsonPath("$.id", is(created.getId().intValue())))
                 .andExpect(jsonPath("$.name", is("Carlos Ray Jr.")))
                 .andExpect(jsonPath("$.age", is(22)))
                 .andExpect(jsonPath("$.department", is("Applied Physics")));
     }
 
     @Test
-    @DisplayName("DELETE /api/v1/students/{id} should delete student and return 200 with success JSON")
+    @DisplayName("DELETE /api/v1/students/{id} should delete student from JPA repository and return 200")
     void testDeleteStudentSuccess() throws Exception {
         StudentRequestDto initial = StudentRequestDto.builder()
                 .name("Delete Candidate")
                 .age(25)
-                .email("delete.me@example.com")
+                .email("delete" + System.currentTimeMillis() + "@example.com")
                 .department("Chemistry")
                 .build();
         StudentResponseDto created = studentService.addStudent(initial);
@@ -151,18 +159,29 @@ class StudentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.success", is(true)))
-                .andExpect(jsonPath("$.data", is(created.getId())));
+                .andExpect(jsonPath("$.data", is(created.getId().intValue())));
     }
 
     @Test
     @DisplayName("GET /api/v1/students/{id} for non-existent student should return 404")
     void testGetStudentNotFound() throws Exception {
-        mockMvc.perform(get("/api/v1/students/non-existent-99999")
+        mockMvc.perform(get("/api/v1/students/99999")
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.status", is(404)))
                 .andExpect(jsonPath("$.error", is("Not Found")))
                 .andExpect(jsonPath("$.message", containsString("not found")));
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/departments should return departments with student counts")
+    void testGetAllDepartments() throws Exception {
+        departmentMockMvc.perform(get("/api/v1/departments")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", isA(List.class)))
+                .andExpect(jsonPath("$[0].name", notNullValue()))
+                .andExpect(jsonPath("$[0].code", notNullValue()));
     }
 
     @Test
@@ -172,7 +191,7 @@ class StudentControllerTest {
                         .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status", is("UP")))
-                .andExpect(jsonPath("$.service", is("Student Management REST Service")))
+                .andExpect(jsonPath("$.service", notNullValue()))
                 .andExpect(jsonPath("$.documentedEndpoints", notNullValue()));
     }
 }

@@ -16,11 +16,11 @@ import java.util.List;
  * Mapped to both '/api/v1/students' and '/students'.
  *
  * DESIGN PRINCIPLE:
- * This controller exclusively handles HTTP concerns:
+ * This controller exclusively handles HTTP transport concerns:
  * - Route mappings and HTTP methods (@GetMapping, @PostMapping, etc.)
  * - Request validation trigger via Bean Validation (@Valid)
  * - HTTP Status codes (200 OK, 201 CREATED)
- * - Delegation of all business logic, mappings, and storage to StudentService.
+ * - Delegation of all business logic, mappings, and JPA persistence to StudentService.
  * - Clean constructor injection.
  */
 @RestController
@@ -30,7 +30,7 @@ public class StudentController {
     private final StudentService service;
 
     /**
-     * Constructor injection: dependencies are explicitly provided via constructor.
+     * Constructor injection: dependencies are strictly provided via constructor.
      */
     public StudentController(StudentService service) {
         this.service = service;
@@ -57,10 +57,10 @@ public class StudentController {
 
     /**
      * READ ONE - Retrieve a student by ID.
-     * Returns HTTP 200 with StudentResponseDto.
+     * Returns HTTP 200 with StudentResponseDto or 404 if not found.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<StudentResponseDto> getStudentById(@PathVariable String id) {
+    public ResponseEntity<StudentResponseDto> getStudentById(@PathVariable Long id) {
         return ResponseEntity.ok(service.getStudentById(id));
     }
 
@@ -69,7 +69,7 @@ public class StudentController {
      * Takes validated StudentRequestDto and returns updated StudentResponseDto with HTTP 200.
      */
     @PutMapping("/{id}")
-    public ResponseEntity<StudentResponseDto> updateStudent(@PathVariable String id,
+    public ResponseEntity<StudentResponseDto> updateStudent(@PathVariable Long id,
                                                             @Valid @RequestBody StudentRequestDto requestDto) {
         return ResponseEntity.ok(service.updateStudent(id, requestDto));
     }
@@ -79,7 +79,7 @@ public class StudentController {
      * Returns HTTP 200 with standardized ApiResponseDto confirming deletion.
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponseDto<String>> deleteStudent(@PathVariable String id) {
+    public ResponseEntity<ApiResponseDto<Long>> deleteStudent(@PathVariable Long id) {
         service.deleteStudent(id);
         return ResponseEntity.ok(ApiResponseDto.success("Student with ID '" + id + "' deleted successfully", id));
     }
